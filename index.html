@@ -1,0 +1,36 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Offline Receipt Validator</title>
+<style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:800px;margin:40px auto;padding:0 16px}h1{margin:0 0 8px}.muted{color:#6b7280}.card{border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin:16px 0}input[type=file]{padding:10px 12px;border:1px solid #d1d5db;border-radius:8px}pre{white-space:pre-wrap;word-wrap:break-word}.ok{background:#ecfdf5;border-color:#10b981}.bad{background:#fef2f2;border-color:#ef4444}</style>
+<h1>Offline Receipt Validator</h1>
+<p class="muted">No network required. Uses local schema & libraries.</p>
+<div class="card">
+  <h3>1) Select receipt (.json)</h3>
+  <input id="file" type="file" accept="application/json">
+</div>
+<div class="card">
+  <h3>2) Result</h3>
+  <pre id="out" class="muted">Waiting for a file…</pre>
+</div>
+<script src="vendor/ajv.min.js"></script>
+<script src="vendor/ajv-formats.min.js"></script>
+<script>
+(async()=>{
+  const out=document.getElementById('out');
+  let validate=null;
+  try{
+    const schema=await (await fetch('schema.json',{cache:'no-store'})).json();
+    const ajv=new Ajv({allErrors:true,strict:false});
+    addFormats(ajv);
+    validate=ajv.compile(schema);
+  }catch(e){ out.textContent='Failed to load schema.json: '+e.message; return; }
+  document.getElementById('file').addEventListener('change', async ev=>{
+    const f=ev.target.files[0]; if(!f) return;
+    try{
+      const obj=JSON.parse(await f.text());
+      const ok = validate ? validate(obj) : false;
+      if(ok){ out.className='ok card'; out.textContent='PASS: schema valid.'; }
+      else { out.className='bad card'; out.textContent='FAIL:\n'+JSON.stringify(validate.errors,null,2); }
+    }catch(e){ out.className='bad card'; out.textContent='FAIL: invalid JSON ('+e.message+')'; }
+  });
+})();
+</script>
